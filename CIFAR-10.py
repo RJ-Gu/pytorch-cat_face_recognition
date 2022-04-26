@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torchvision.datasets
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+import pandas as pd
 
 train_data = torchvision.datasets.CIFAR10(root="./data", train=True, transform=torchvision.transforms.ToTensor(),
                                           download=True)
@@ -28,9 +28,9 @@ total_train_step = 0
 total_test_step = 0
 epoch = 10
 
-writer = SummaryWriter("./logs")
-train_txt = open("train.txt", "w")
-test_txt = open("test.txt", "w")
+train_excel = {'次数': [], '损失率': []}
+test_excel = {'次数': [], '准确率': []}
+
 for i in range(epoch):
     print("第{}轮训练开始".format(i + 1))
     for data in train_dataloader:
@@ -47,8 +47,8 @@ for i in range(epoch):
         total_train_step = total_train_step + 1
         if total_train_step % 100 == 0:
             print("训练次数：{}，Loss：{}".format(total_train_step, loss))
-            train_txt.write("{} {}\n".format(total_train_step, loss))
-            writer.add_scalar("train_loss", loss.item(), total_train_step)
+            train_excel['次数'].append(format(total_train_step))
+            train_excel['损失率'].append(format(loss))
 
     total_test_loss = 0
     total_accuracy = 0
@@ -63,9 +63,22 @@ for i in range(epoch):
             accuracy = (outputs.argmax(1) == targets).sum()
             total_accuracy = total_accuracy + accuracy
     print("整体测试集上的Loss：{}".format(total_test_loss))
-    print("整体测试集上的正确率：{}".format(total_accuracy))
-    writer.add_scalar("test_loss", total_test_loss, total_test_step)
-    test_txt.write("{} {}\n".format(total_test_step, total_accuracy))
+    print("整体测试集上的正确率：{}".format(total_accuracy / test_data_size))
+    test_excel['次数'].append(format(total_test_step))
+    test_excel['准确率'].append(format(total_accuracy/test_data_size))
     total_test_step += 1
 
-writer.close()
+train_excel = pd.DataFrame(train_excel)
+test_excel = pd.DataFrame(test_excel)
+train_excel.to_excel(
+    excel_writer=r'train_data.xlsx',
+    sheet_name='train',
+    index=False,
+    columns=["次数", "损失率"],
+    encoding="GBK")
+test_excel.to_excel(
+    excel_writer=r'test_data.xlsx',
+    sheet_name='test',
+    index=False,
+    columns=["次数", "准确率"],
+    encoding="GBK")
