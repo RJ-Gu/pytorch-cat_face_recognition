@@ -1,35 +1,41 @@
 import os
 import torch
+import torchvision.models
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
 from torchvision import transforms
 import pandas as pd
 
+## ['三花', '全白', '全黑', '其他', '奶牛', '橘白', '狸花', '玳瑁', '纯橘']
+label_convert = {'三花': 1, '全白': 2, '全黑': 3, '其他': 4, '奶牛': 5, '橘白': 6, '狸花': 7, '玳瑁': 8, '纯橘': 0}
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'  # 下面老是报错 shape 不一致
+
 
 class CatBreed(Dataset):
-    def __init__(self, root_dir, label_dir):  # rootdir: 科大猫咪 label_dir: 全黑
+    def __init__(self, root_dir, label_dir):  # root_dir: 科大猫咪 label_dir: 全黑
         self.root_dir = root_dir
         self.label_dir = label_dir
         self.path = os.path.join(root_dir, label_dir)  # path: 科大猫咪/全黑
-        self.cat_path = os.listdir(self.path)  # cat_path:[cat01, cat02, ...](list)
-        self.cat_photo_name = []
-        for items in self.cat_path:
-            self.cat_breed_path = os.path.join(self.path, items)  # cat_breed_path: 科大猫咪/全黑/cat01
-            self.img_path = os.listdir(self.cat_breed_path)
-            self.cat_photo_name = self.cat_photo_name + self.img_path
+        self.img_path = os.listdir(self.path)
 
     def __len__(self):
-        return len(self.cat_photo_name)
+        return len(self.img_path)
 
     def __getitem__(self, index):
-        img_name = self.cat_photo_name[index]
-        img_item_path = os.path.join(self.cat_breed_path, img_name)
-        img = Image.open(img_item_path)
+
+        img_name = self.img_path[index]
+        img_item_path = os.path.join(self.path, img_name)
+        img = Image.open(img_item_path).convert("RGB")
         img = img.resize((32, 32))
         pil_to_tensor = transforms.PILToTensor()
         img_tensor = pil_to_tensor(img)
-        label = self.label_dir
+        img_tensor = img_tensor.float()
+        label = label_convert[self.label_dir]
+        '''num_class = 9
+        ignore_label = 0
+        label[label >= num_class] = ignore_label
+        label[label <= 0] = ignore_label'''
         return img_tensor, label
 
 
@@ -58,10 +64,11 @@ test_data_size = len(test_data)
 print("训练数据集长度为：{}".format(train_data_size))
 print("测试数据集长度为：{}".format(test_data_size))
 
-resnet = torch.load("resnet.pth").cuda()
-
-train_dataloader = DataLoader(train_data, batch_size=64)
-test_dataloader = DataLoader(test_data, batch_size=64)
+resnet = torchvision.models.resnet18(pretrained=False)
+resnet.fc = torch.nn.Linear(in_features=512, out_features=9, bias=True)
+resnet = resnet.cuda()
+train_dataloader = DataLoader(train_data, batch_size=10, shuffle=True, drop_last=False)
+test_dataloader = DataLoader(test_data, batch_size=9)
 
 loss_fn = torch.nn.CrossEntropyLoss().cuda()
 
@@ -72,7 +79,7 @@ total_train_step = 0
 total_test_step = 0
 epoch = 10
 
-writer = SummaryWriter("./logs_new2")
+writer = SummaryWriter("./logs")
 train_excel = {'次数': [], '损失率': []}
 test_excel = {'次数': [], '准确率': []}
 
@@ -109,7 +116,7 @@ for i in range(epoch):
             accuracy = (outputs.argmax(1) == targets).sum()
             total_accuracy = total_accuracy + accuracy
     print("整体测试集上的Loss：{}".format(total_test_loss))
-    print("整体测试集上的正确率：{}".format(total_accuracy))
+    print("整体测试集上的正确率：{}".format(total_accuracy / test_data_size))
     writer.add_scalar("test_loss", total_test_loss, total_test_step)
     test_excel['次数'].append(format(total_test_step))
     test_excel['准确率'].append(format(total_accuracy / test_data_size))
