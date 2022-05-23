@@ -1,13 +1,13 @@
 import os
+import pandas as pd
 import torch
 import torchvision.models
+from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
-from PIL import Image
 from torchvision import transforms
-import pandas as pd
 
-## ['三花', '全白', '全黑', '其他', '奶牛', '橘白', '狸花', '玳瑁', '纯橘']
+# ['三花', '全白', '全黑', '其他', '奶牛', '橘白', '狸花', '玳瑁', '纯橘']
 label_convert = {'三花': 1, '全白': 2, '全黑': 3, '其他': 4, '奶牛': 5, '橘白': 6, '狸花': 7, '玳瑁': 8, '纯橘': 0}
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'  # 下面老是报错 shape 不一致
 
@@ -23,7 +23,6 @@ class CatBreed(Dataset):
         return len(self.img_path)
 
     def __getitem__(self, index):
-
         img_name = self.img_path[index]
         img_item_path = os.path.join(self.path, img_name)
         img = Image.open(img_item_path).convert("RGB")
@@ -32,10 +31,6 @@ class CatBreed(Dataset):
         img_tensor = pil_to_tensor(img)
         img_tensor = img_tensor.float()
         label = label_convert[self.label_dir]
-        '''num_class = 9
-        ignore_label = 0
-        label[label >= num_class] = ignore_label
-        label[label <= 0] = ignore_label'''
         return img_tensor, label
 
 
@@ -67,17 +62,18 @@ print("测试数据集长度为：{}".format(test_data_size))
 resnet = torchvision.models.resnet18(pretrained=False)
 resnet.fc = torch.nn.Linear(in_features=512, out_features=9, bias=True)
 resnet = resnet.cuda()
-train_dataloader = DataLoader(train_data, batch_size=10, shuffle=True, drop_last=False)
+
+train_dataloader = DataLoader(train_data, batch_size=5, shuffle=True, drop_last=False)
 test_dataloader = DataLoader(test_data, batch_size=9)
 
 loss_fn = torch.nn.CrossEntropyLoss().cuda()
 
-learning_rate = 1e-2
+learning_rate = 1.5e-2
 optimizer = torch.optim.SGD(resnet.parameters(), lr=learning_rate)
 
 total_train_step = 0
 total_test_step = 0
-epoch = 10
+epoch = 50
 
 writer = SummaryWriter("./logs")
 train_excel = {'次数': [], '损失率': []}
@@ -97,7 +93,7 @@ for i in range(epoch):
         optimizer.step()
 
         total_train_step = total_train_step + 1
-        if total_train_step % 100 == 0:
+        if total_train_step % 10 == 0:
             print("训练次数：{}，Loss：{}".format(total_train_step, loss))
             writer.add_scalar("train_loss", loss.item(), total_train_step)
             train_excel['次数'].append(format(total_train_step))

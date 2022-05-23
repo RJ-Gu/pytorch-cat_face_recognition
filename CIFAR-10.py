@@ -4,9 +4,9 @@ import torchvision.datasets
 from torch.utils.data import DataLoader
 import pandas as pd
 
-train_data = torchvision.datasets.CIFAR10(root="./data", train=True, transform=torchvision.transforms.ToTensor(),
+train_data = torchvision.datasets.CIFAR10(root="./dataset", train=True, transform=torchvision.transforms.ToTensor(),
                                           download=True)
-test_data = torchvision.datasets.CIFAR10(root="./data", train=False, transform=torchvision.transforms.ToTensor(),
+test_data = torchvision.datasets.CIFAR10(root="./dataset", train=False, transform=torchvision.transforms.ToTensor(),
                                          download=True)
 
 train_data_size = len(train_data)
@@ -71,13 +71,13 @@ for i in range(epoch):
 train_excel = pd.DataFrame(train_excel)
 test_excel = pd.DataFrame(test_excel)
 train_excel.to_excel(
-    excel_writer=r'train_data.xlsx',
+    excel_writer=r'CIFAR_train_data.xlsx',
     sheet_name='train',
     index=False,
     columns=["次数", "损失率"],
     encoding="GBK")
 test_excel.to_excel(
-    excel_writer=r'test_data.xlsx',
+    excel_writer=r'CIFAR_test_data.xlsx',
     sheet_name='test',
     index=False,
     columns=["次数", "准确率"],
