@@ -16,8 +16,8 @@ print("测试数据集长度为：{}".format(test_data_size))
 
 resnet = torch.load("resnet.pth").cuda()
 
-train_dataloader = DataLoader(train_data, batch_size=64)
-test_dataloader = DataLoader(test_data, batch_size=64)
+train_dataloader = DataLoader(train_data, batch_size=100, shuffle=True)
+test_dataloader = DataLoader(test_data, batch_size=100)
 
 loss_fn = nn.CrossEntropyLoss().cuda()
 
